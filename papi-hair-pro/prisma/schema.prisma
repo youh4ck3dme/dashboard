@@ -1,0 +1,171 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  role          Role      @default(USER)
+  avatar        String?
+  phone         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  bookings      Booking[]
+  orders        Order[]
+}
+
+model Staff {
+  id          String    @id @default(cuid())
+  name        String
+  email       String    @unique
+  phone       String?
+  avatar      String?
+  specialties String[]
+  workingHours Json
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  bookings    Booking[]
+}
+
+model Service {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  duration    Int       // v minútach
+  category    String
+  isVip       Boolean   @default(false)
+  isActive    Boolean   @default(true)
+  image       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  bookings    BookingService[]
+  addOns      ServiceAddOn[]
+}
+
+model ServiceAddOn {
+  id        String   @id @default(cuid())
+  name      String
+  price     Float
+  duration  Int
+  serviceId String
+  service   Service  @relation(fields: [serviceId], references: [id])
+  createdAt DateTime @default(now())
+}
+
+model Booking {
+  id          String    @id @default(cuid())
+  userId      String
+  staffId     String
+  date        DateTime
+  startTime   String
+  endTime     String
+  status      BookingStatus @default(PENDING)
+  notes       String?
+  totalPrice  Float
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  user        User      @relation(fields: [userId], references: [id])
+  staff       Staff     @relation(fields: [staffId], references: [id])
+  services    BookingService[]
+
+  @@unique([staffId, date, startTime])
+}
+
+model BookingService {
+  id        String  @id @default(cuid())
+  bookingId String
+  serviceId String
+  quantity  Int     @default(1)
+  price     Float
+  
+  booking   Booking @relation(fields: [bookingId], references: [id])
+  service   Service @relation(fields: [serviceId], references: [id])
+  
+  @@unique([bookingId, serviceId])
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  description String?
+  price       Float
+  category    String
+  brand       String?
+  volume      String?
+  ingredients String[]
+  images      String[]
+  stock       Int         @default(0)
+  isActive    Boolean     @default(true)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @default(now()) @updatedAt
+  orderItems  OrderItem[]
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  userId      String
+  orderNumber String      @unique
+  status      OrderStatus @default(PENDING)
+  totalPrice  Float
+  shippingAddress Json?
+  paymentMethod String?
+  stripeSessionId String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @default(now()) @updatedAt
+  
+  user        User        @relation(fields: [userId], references: [id])
+  items       OrderItem[]
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  productId String
+  quantity  Int
+  price     Float
+  
+  order     Order   @relation(fields: [orderId], references: [id])
+  product   Product @relation(fields: [productId], references: [id])
+}
+
+model Settings {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       Json
+  updatedAt   DateTime @updatedAt
+}
+
+enum Role {
+  USER
+  ADMIN
+  STAFF
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+}
